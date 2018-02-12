@@ -11,18 +11,22 @@ public class VoteTallyer {
     private Set<Deque<String>> everyonesVotes;
     private Set<Deque<String>> copyOfeveryonesVotes;
     private int totalVoters=0;
+    //hashset each of the items is a voter, and each voter is a deque of preferences
     public VoteTallyer()
     {
         everyonesVotes = new HashSet<Deque<String>>();
     }
+    //Add a voter which is given as a deque of their preferences in order
     public void addVoter(Deque<String> aVoter){
         everyonesVotes.add(aVoter);
         totalVoters++;
     }
+    //Remove a voter
     private void removeVoter(Deque<String> aVoter){
         everyonesVotes.remove(aVoter);
         totalVoters--;
     }
+    //Make a deep copy of everyone's votes
     private void makeCopy(){
     	copyOfeveryonesVotes=new HashSet<Deque<String>>();
     	Iterator<Deque<String>> iter=everyonesVotes.iterator();
@@ -32,17 +36,26 @@ public class VoteTallyer {
             copyOfeveryonesVotes.add(new ArrayDeque<String>(currentVoter));
         }
     }
+    //Delete the copy
     public void nullifyCopy(){
     	copyOfeveryonesVotes=null;
     }
+    //Do Instant Runoff Vote and return a Deque of the election results all the way down to last place
+    //This is done by doing IRV to get the actual winner, then eliminating them and trying again
+    //Repeat until all the candidates are sorted
     public Deque<String> findAggregatePref(){
+    	//where the results of the election will go
     	Deque<String> aggregatePref=new ArrayDeque<String>();
+    	//store the candidates who have already been eliminated
     	Set<String> eliminated=new HashSet<String>();
     	try{
+    		//Find the winner based on nobody eliminated yet
 	    	String currentWinner=findWinner(eliminated);
 	    	while(currentWinner!=null)
 	    	{
 	    		aggregatePref.addLast(currentWinner);
+	    		//findWinner modifies eliminated because it is passed by reference
+	    		//so we need to remake it for the actual eliminated 
 	    		eliminated=new HashSet<String>();
 	    		eliminated.addAll(aggregatePref);
 	    		currentWinner=findWinner(eliminated);
@@ -51,9 +64,11 @@ public class VoteTallyer {
     	catch(Exception e){}
     	return aggregatePref;
     }
+    //If nobody eliminated, then put in an empty hashset for the eliminated
     public String findWinner(){
     	return findWinner(new HashSet<String>());
     }
+    //given the candidates already eliminated, find the winner 
     public String findWinner(Set<String> eliminated){
         String winner=null;
         HashMap<String,Integer> tally;
@@ -61,8 +76,12 @@ public class VoteTallyer {
         int leastvotes;
         String plurality=null;
         makeCopy();
+        //If everyone is eliminated this will fall into an infinite loop but the calling function
+        //		will stop before this for valid everyonesVotes
         while (winner==null){
             tally=tallyVotes(eliminated);
+            //finds the candidate with the most votes. They have mostvotes
+            //	and their name is plurality
             mostvotes = Collections.max(tally.values());
             for (Map.Entry<String,Integer> entry : tally.entrySet()){
                 if (entry.getValue()==mostvotes){
@@ -78,6 +97,8 @@ public class VoteTallyer {
                 return winner;
             }
             else {
+            	//find the candidate with the least votes. put them as plurality even though
+            	//		the name no longer fits. But variable isn't being used anymore.
                 leastvotes=Collections.min(tally.values());
                 for (Map.Entry<String,Integer> entry : tally.entrySet()){
                     if (entry.getValue()==leastvotes){
@@ -85,6 +106,9 @@ public class VoteTallyer {
                         break;
                     }
                 }
+                //this copy of eliminated does both people eliminated because they did too well
+                //		and are out of consideration for 2nd,3rd etc places
+                //		as well as those eliminated for doing too poorly in the current iteration
                 eliminated.add(plurality);
                 System.out.println(plurality+" got eliminated");
             }
@@ -102,9 +126,11 @@ public class VoteTallyer {
         }
         Iterator<Deque<String>> iter=copyOfeveryonesVotes.iterator();
         Integer oldcount;
+        //Iterate through all the voters
         while (iter.hasNext()){
             currentVoter=iter.next();
             currentVote=currentVoter.peek();
+            //if the currentVoter wanted someone eliminated, look at the next choices
             while(eliminated!=null&&eliminated.contains(currentVote))
             {
                 currentVoter.remove(currentVote);
@@ -112,6 +138,7 @@ public class VoteTallyer {
             }
             if(currentVote!=null){
 	            oldcount=counter.get(currentVote);
+	            //no previous voter wanted currentVote yet so it is not in counter
 	            if(oldcount==null){
 	                oldcount=0;
 	            }
